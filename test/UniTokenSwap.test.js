@@ -18,7 +18,7 @@ contract("UniTokenSwap", (accounts) => {
 
     const ZERO_BALANCE = new BN(0);
 
-    const issuanceAddress = process.env.ISSUANCE;
+    const ethSwapAddress = process.env.ETHSWAP;
     const uniswapFactoryAddress = process.env.UNISWAP_FACTORY;
     const minerAddress = process.env.MINER;
     const daiAddress = process.env.DAI;
@@ -27,7 +27,7 @@ contract("UniTokenSwap", (accounts) => {
 
     beforeEach(async () => {
         console.log("miner address", );
-        swap = await UniTokenSwap.new(issuanceAddress, uniswapFactoryAddress, minerAddress);
+        swap = await UniTokenSwap.new(ethSwapAddress, uniswapFactoryAddress, minerAddress);
 
         const provider = new Web3.providers.HttpProvider("http://localhost:8545");
         ERC20 = TruffleContract({ abi: ERC20Metadata.abi });
