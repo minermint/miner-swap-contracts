@@ -64,7 +64,7 @@ contract("UniTokenSwap", (accounts) => {
         console.log(estimate.toString());
     });
 
-    it.only("should NOT swap when deadline expires", async() => {
+    it("should NOT swap when deadline expires", async() => {
         await dai.approve(swap.address, new BN("10000000000000000000"), { from: OWNER });
 
         time.increase(time.duration.minutes(20));
@@ -78,6 +78,20 @@ contract("UniTokenSwap", (accounts) => {
                 { from: OWNER }
             ),
             "UniswapV2Router: EXPIRED"
+        );
+    });
+
+    it.only("should NOT swap invalid token", async() => {
+        await dai.approve(swap.address, new BN("10000000000000000000"), { from: OWNER });
+
+        await expectRevert.unspecified(
+            swap.convert(
+                ZERO_ADDRESS,
+                new BN("10000000000000000000"),
+                new BN("10000000000000000000"),
+                deadline,
+                { from: OWNER }
+            )
         );
     });
 });
