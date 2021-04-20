@@ -1,4 +1,4 @@
-const { BN, constants, expectEvent, expectRevert } = require("@openzeppelin/test-helpers");
+const { BN, constants, expectEvent, expectRevert, time } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
 const { ZERO_ADDRESS, MAX_UINT256 } = constants;
 
@@ -25,6 +25,8 @@ contract("UniTokenSwap", (accounts) => {
 
     let swap, dai, ERC20;
 
+    let deadline, timestamp;
+
     beforeEach(async () => {
         console.log("miner address", );
         swap = await UniTokenSwap.new(ethSwapAddress, uniswapFactoryAddress, minerAddress);
@@ -35,28 +37,47 @@ contract("UniTokenSwap", (accounts) => {
         ERC20.setProvider(provider);
 
         dai = await ERC20.at(daiAddress);
+
+        timestamp = (await web3.eth.getBlock("latest")).timestamp;
+        deadline = timestamp + 20 * 60;
     });
 
     it("should convert a token for miner", async () => {
         const miner = await ERC20.at(minerAddress);
-        console.log((await miner.balanceOf(OWNER)).toString());
 
-        await dai.approve(swap.address, new BN("100000000000000000000"), { from: OWNER });
+        await dai.approve(swap.address, new BN("10000000000000000000"), { from: OWNER });
 
-        await swap.convert(dai.address, new BN("100000000000000000000"), new BN("1300000000000000000000"), { from: OWNER });
+        await swap.convert(dai.address, new BN("10000000000000000000"), new BN("10000000000000000000"), deadline, { from: OWNER });
 
         console.log((await miner.balanceOf(OWNER)).toString());
     });
 
     it("should get the amount of token required to convert to eth", async() => {
-        const estimate = await swap.getTokenToEth(dai.address, new BN("100000000000000000000"), { from: OWNER });
+        const estimate = await swap.getTokenToEth(dai.address, new BN("10000000000000000000"), { from: OWNER });
 
         console.log(estimate.toString());
     });
 
     it("should get the amount of token require to convert to miner", async() => {
-        const estimate = await swap.getTokenToMiner(dai.address, new BN("100000000000000000000"), { from: OWNER });
+        const estimate = await swap.getTokenToMiner(dai.address, new BN("10000000000000000000"), { from: OWNER });
 
         console.log(estimate.toString());
+    });
+
+    it.only("should NOT swap when deadline expires", async() => {
+        await dai.approve(swap.address, new BN("10000000000000000000"), { from: OWNER });
+
+        time.increase(time.duration.minutes(20));
+
+        await expectRevert(
+            swap.convert(
+                dai.address,
+                new BN("10000000000000000000"),
+                new BN("10000000000000000000"),
+                deadline,
+                { from: OWNER }
+            ),
+            "UniswapV2Router: EXPIRED"
+        );
     });
 });

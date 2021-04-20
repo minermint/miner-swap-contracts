@@ -22,7 +22,7 @@ contract UniTokenSwap {
         minerAddress = minerAddress_;
     }
 
-    function convert(address token, uint256 amount, uint256 minerMin) public {
+    function convert(address token, uint256 amount, uint256 minerMin, uint256 deadline) public {
         IEthSwap ethSwap = IEthSwap(ethSwapAddress);
 
         IUniswapV2ERC20 erc20 = IUniswapV2ERC20(token);
@@ -40,7 +40,7 @@ contract UniTokenSwap {
 
         require(ethSwap.getConversionAmount(etherMin) >= minerMin, "UniTokenSwap/miner-min-not-met");
 
-        router.swapExactTokensForETH(amount, etherMin, path, address(this), block.timestamp);
+        router.swapExactTokensForETH(amount, etherMin, path, address(this), deadline);
 
         ethSwap.convert{value: address(this).balance}(minerMin);
 
