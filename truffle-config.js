@@ -25,6 +25,8 @@
 // const mnemonic = fs.readFileSync(".secret").toString().trim();
 require('dotenv').config();
 
+const HDWalletProvider = require("@truffle/hdwallet-provider");
+
 module.exports = {
   plugins: [
       "truffle-ganache-test"
@@ -47,7 +49,18 @@ module.exports = {
            gas: 6721975,
            networkCheckTimeout: 60000,
            fork: "https://eth-kovan.alchemyapi.io/v2/DjLaJSg4gNXdWfDmSufgzuFeRBs-2eRw",
-           mnemonic: "filter garage small hill spider pumpkin meat task inch walnut gym dentist"
+           mnemonic: process.env.MNEMONIC
+       },
+       kovan: {
+           provider: new HDWalletProvider(
+               process.env.PRIVATE_KEY,
+               process.env.KOVAN_URL
+           ),
+           network_id: "42",
+           confirmations: 4,
+           timeoutBlocks: 10,
+           gasPrice: 10000000000,
+           networkCheckTimeout: 10000
        }
   },
   // Set default mocha options here, use special reporters etc.
@@ -77,6 +90,6 @@ module.exports = {
   // $ truffle migrate --reset --compile-all
 
   db: {
-    enabled: true
+    enabled: false
   }
 };
