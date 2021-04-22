@@ -45,7 +45,12 @@ contract UniTokenSwap {
         ethSwap.convert{value: address(this).balance}(minerMin);
 
         IUniswapV2ERC20 miner = IUniswapV2ERC20(minerAddress);
-        miner.transfer(msg.sender, miner.balanceOf(address(this)));
+
+        uint256 minerSwapAmount = miner.balanceOf(address(this));
+
+        miner.transfer(msg.sender, minerSwapAmount);
+
+        emit Converted(token, amount, minerSwapAmount);
     }
 
     receive() external payable {
@@ -94,4 +99,10 @@ contract UniTokenSwap {
     function getConversionAmount(address token, uint256 amount) external view returns (uint256) {
         return getTokenToMiner(token, amount);
     }
+
+    event Converted(
+        address indexed token,
+        uint256 amountIn,
+        uint256 amountOut
+    );
 }

@@ -32,7 +32,6 @@ contract("UniTokenSwap", (accounts) => {
     let deadline, timestamp;
 
     beforeEach(async () => {
-        console.log("miner address", );
         swap = await UniTokenSwap.new(ethSwapAddress, uniswapFactoryAddress, minerAddress);
 
         const provider = new Web3.providers.HttpProvider("http://localhost:8545");
@@ -46,7 +45,7 @@ contract("UniTokenSwap", (accounts) => {
         deadline = timestamp + 20 * 60;
     });
 
-    it.only("should convert a token for miner", async () => {
+    it("should convert a token for miner", async () => {
         const miner = await ERC20.at(minerAddress);
         const balance = await miner.balanceOf(OWNER);
 
@@ -58,6 +57,28 @@ contract("UniTokenSwap", (accounts) => {
         await swap.convert(dai.address, amount, amount, deadline, { from: OWNER });
 
         expect(await miner.balanceOf(OWNER)).to.be.bignumber.equal(expected);
+    });
+
+    it("should emit a Converted event", async () => {
+        const miner = await ERC20.at(minerAddress);
+
+        const daiToMiner = await swap.getTokenToMiner(dai.address, amount);
+
+        await dai.approve(swap.address, amount, { from: OWNER });
+
+        const { logs } = await swap.convert(
+            dai.address,
+            amount,
+            amount,
+            deadline,
+            { from: OWNER }
+        );
+
+        expectEvent.inLogs(logs, "Converted", {
+            token: dai.address,
+            amountIn: amount,
+            amountOut: daiToMiner,
+        });
     });
 
     it("should get the amount of token required to convert to eth", async() => {
