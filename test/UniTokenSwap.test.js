@@ -23,7 +23,11 @@ contract("UniTokenSwap", (accounts) => {
     const minerAddress = process.env.MINER;
     const daiAddress = process.env.DAI;
 
-    let swap, dai, ERC20;
+    const amount = new BN("10000000000000000000");
+
+    let ERC20;
+
+    let swap, dai;
 
     let deadline, timestamp;
 
@@ -42,14 +46,18 @@ contract("UniTokenSwap", (accounts) => {
         deadline = timestamp + 20 * 60;
     });
 
-    it("should convert a token for miner", async () => {
+    it.only("should convert a token for miner", async () => {
         const miner = await ERC20.at(minerAddress);
+        const balance = await miner.balanceOf(OWNER);
 
-        await dai.approve(swap.address, new BN("10000000000000000000"), { from: OWNER });
+        const daiToMiner = await swap.getTokenToMiner(dai.address, amount);
+        const expected = daiToMiner.add(balance);
 
-        await swap.convert(dai.address, new BN("10000000000000000000"), new BN("10000000000000000000"), deadline, { from: OWNER });
+        await dai.approve(swap.address, amount, { from: OWNER });
 
-        console.log((await miner.balanceOf(OWNER)).toString());
+        await swap.convert(dai.address, amount, amount, deadline, { from: OWNER });
+
+        expect(await miner.balanceOf(OWNER)).to.be.bignumber.equal(expected);
     });
 
     it("should get the amount of token required to convert to eth", async() => {
