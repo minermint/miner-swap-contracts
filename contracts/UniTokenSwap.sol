@@ -16,13 +16,22 @@ contract UniTokenSwap {
     address public uniswapFactoryAddress;
     address public minerAddress;
 
-    constructor(address ethSwapAddress_, address uniswapFactoryAddress_, address minerAddress_) public {
+    constructor(
+        address ethSwapAddress_,
+        address uniswapFactoryAddress_,
+        address minerAddress_
+    ) public {
         ethSwapAddress = ethSwapAddress_;
         uniswapFactoryAddress = uniswapFactoryAddress_;
         minerAddress = minerAddress_;
     }
 
-    function convert(address token, uint256 amount, uint256 minerMin, uint256 deadline) public {
+    function convert(
+        address token,
+        uint256 amount,
+        uint256 minerMin,
+        uint256 deadline
+    ) public {
         IEthSwap ethSwap = IEthSwap(ethSwapAddress);
 
         IUniswapV2ERC20 erc20 = IUniswapV2ERC20(token);
@@ -38,11 +47,20 @@ contract UniTokenSwap {
         path[1] = router.WETH();
         uint256 etherMin = getTokenToEth(token, amount);
 
-        require(ethSwap.getConversionAmount(etherMin) >= minerMin, "UniTokenSwap/miner-min-not-met");
+        require(
+            ethSwap.getConversionAmount(etherMin) >= minerMin,
+            "UniTokenSwap/miner-min-not-met"
+        );
 
-        router.swapExactTokensForETH(amount, etherMin, path, address(this), deadline);
+        router.swapExactTokensForETH(
+            amount,
+            etherMin,
+            path,
+            address(this),
+            deadline
+        );
 
-        ethSwap.convert{value: address(this).balance}(minerMin);
+        ethSwap.convert{ value: address(this).balance }(minerMin);
 
         IUniswapV2ERC20 miner = IUniswapV2ERC20(minerAddress);
 
@@ -53,11 +71,13 @@ contract UniTokenSwap {
         emit Converted(token, amount, minerSwapAmount);
     }
 
-    receive() external payable {
+    receive() external payable {}
 
-    }
-
-    function getTokenToEth(address token, uint256 amount) public view returns (uint256) {
+    function getTokenToEth(address token, uint256 amount)
+        public
+        view
+        returns (uint256)
+    {
         IUniswapV2Router02 router = IUniswapV2Router02(uniswapFactoryAddress);
         IUniswapV2ERC20 erc20 = IUniswapV2ERC20(token);
 
@@ -68,7 +88,11 @@ contract UniTokenSwap {
         return router.getAmountsOut(amount, path)[path.length - 1];
     }
 
-    function getEthToToken(address token, uint256 amount) public view returns (uint256) {
+    function getEthToToken(address token, uint256 amount)
+        public
+        view
+        returns (uint256)
+    {
         IUniswapV2Router02 router = IUniswapV2Router02(uniswapFactoryAddress);
         IUniswapV2ERC20 erc20 = IUniswapV2ERC20(token);
 
@@ -79,7 +103,11 @@ contract UniTokenSwap {
         return router.getAmountsOut(amount, path)[path.length - 1];
     }
 
-    function getTokenToMiner(address token, uint256 amount) public view returns (uint256) {
+    function getTokenToMiner(address token, uint256 amount)
+        public
+        view
+        returns (uint256)
+    {
         uint256 tokenToEth = getTokenToEth(token, amount);
         IEthSwap ethSwap = IEthSwap(ethSwapAddress);
 
@@ -96,13 +124,13 @@ contract UniTokenSwap {
         return tokenPricePerMiner;
     }
 
-    function getConversionAmount(address token, uint256 amount) external view returns (uint256) {
+    function getConversionAmount(address token, uint256 amount)
+        external
+        view
+        returns (uint256)
+    {
         return getTokenToMiner(token, amount);
     }
 
-    event Converted(
-        address indexed token,
-        uint256 amountIn,
-        uint256 amountOut
-    );
+    event Converted(address indexed token, uint256 amountIn, uint256 amountOut);
 }

@@ -8,6 +8,8 @@
     "scripts": {
         "deploy:development": "truffle deploy --network development",
         "deploy:staging": "truffle deploy --network kovan",
+        "lint:solidity": "./node_modules/.bin/solhint -f table contracts/**/*.sol",
+        "lint:tests": "./node_modules/.bin/eslint ./test/",
         "test": "truffle run ganache-test"
     },
     "dependencies": {
@@ -19,6 +21,8 @@
         "@openzeppelin/test-helpers": "^0.5.10",
         "@truffle/contract": "^4.3.12",
         "@truffle/hdwallet-provider": "^1.2.6",
+        "solhint": "^3.3.4",
+        "solhint-plugin-prettier": "^0.0.5",
         "truffle-ganache-test": "^1.1.0"
     }
 }

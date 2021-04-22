@@ -5,5 +5,8 @@ interface IEthSwap {
 
     function getConversionRate() external view returns (uint256);
 
-    function getConversionAmount(uint256 amount) external view returns (uint256);
+    function getConversionAmount(uint256 amount)
+        external
+        view
+        returns (uint256);
 }
