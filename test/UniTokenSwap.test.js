@@ -81,7 +81,7 @@ contract("UniTokenSwap", (accounts) => {
         );
     });
 
-    it.only("should NOT swap invalid token", async() => {
+    it("should NOT swap invalid token", async() => {
         await dai.approve(swap.address, new BN("10000000000000000000"), { from: OWNER });
 
         await expectRevert.unspecified(
