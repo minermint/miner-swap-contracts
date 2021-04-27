@@ -21,6 +21,9 @@
         "@openzeppelin/test-helpers": "^0.5.10",
         "@truffle/contract": "^4.3.12",
         "@truffle/hdwallet-provider": "^1.2.6",
+        "eslint": "^7.25.0",
+        "eslint-config-prettier": "^8.3.0",
+        "eslint-plugin-prettier": "^3.4.0",
         "solhint": "^3.3.4",
         "solhint-plugin-prettier": "^0.0.5",
         "truffle-ganache-test": "^1.1.0"

@@ -1,23 +1,22 @@
-const { BN, constants, expectEvent, expectRevert, time } = require("@openzeppelin/test-helpers");
+const {
+    BN,
+    constants,
+    expectEvent,
+    expectRevert,
+    time,
+} = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
-const { ZERO_ADDRESS, MAX_UINT256 } = constants;
+const { ZERO_ADDRESS } = constants;
 
-const TruffleContract = require("@truffle/contract");
+const truffleContract = require("@truffle/contract");
 const IEthSwap = artifacts.require("IEthSwap");
 const UniTokenSwap = artifacts.require("UniTokenSwap");
-const ERC20Metadata = require("@uniswap/v2-core/build/ERC20.json");
-const UniSwapV2PairMetadata = require("@uniswap/v2-periphery/build/UniswapV2Router02.json");
+const ERC20Contract = require("@uniswap/v2-core/build/ERC20.json");
+const UniSwapV2RouterMetadata = require("@uniswap/v2-periphery/build/UniswapV2Router02.json");
 const Web3 = require("web3");
 
 contract("UniTokenSwap", (accounts) => {
-
     const OWNER = accounts[0];
-    const MINTER = accounts[1];
-
-    const ALICE = accounts[3];
-    const BOB = accounts[4];
-
-    const ZERO_BALANCE = new BN(0);
 
     const ethSwapAddress = process.env.ETHSWAP;
     const uniswapFactoryAddress = process.env.UNISWAP_FACTORY;
@@ -27,24 +26,31 @@ contract("UniTokenSwap", (accounts) => {
 
     const amount = new BN("10").mul(new BN("10").pow(new BN("18")));
 
-    let ERC20, UniSwapV2Pair;
+    let ERC20;
 
     let swap, dai;
 
     let deadline, timestamp;
 
     beforeEach(async () => {
-        swap = await UniTokenSwap.new(ethSwapAddress, uniswapFactoryAddress, minerAddress);
+        swap = await UniTokenSwap.new(
+            ethSwapAddress,
+            uniswapFactoryAddress,
+            minerAddress
+        );
 
-        const provider = new Web3.providers.HttpProvider("http://localhost:8545");
-        ERC20 = TruffleContract({ abi: ERC20Metadata.abi });
+        const provider = new Web3.providers.HttpProvider(
+            "http://localhost:8545"
+        );
+        ERC20 = truffleContract({ abi: ERC20Contract.abi });
 
         ERC20.setProvider(provider);
 
         dai = await ERC20.at(daiAddress);
 
         timestamp = (await web3.eth.getBlock("latest")).timestamp;
-        deadline = timestamp + 20 * 60;
+        const twentyMinutes = 20 * 60;
+        deadline = timestamp + twentyMinutes;
     });
 
     it("should convert a token for miner", async () => {
@@ -56,14 +62,14 @@ contract("UniTokenSwap", (accounts) => {
 
         await dai.approve(swap.address, amount, { from: OWNER });
 
-        await swap.convert(dai.address, amount, amount, deadline, { from: OWNER });
+        await swap.convert(dai.address, amount, amount, deadline, {
+            from: OWNER,
+        });
 
         expect(await miner.balanceOf(OWNER)).to.be.bignumber.equal(expected);
     });
 
     it("should emit a Converted event", async () => {
-        const miner = await ERC20.at(minerAddress);
-
         const daiToMiner = await swap.getTokenToMiner(dai.address, amount);
 
         await dai.approve(swap.address, amount, { from: OWNER });
@@ -77,19 +83,23 @@ contract("UniTokenSwap", (accounts) => {
         );
 
         expectEvent.inLogs(logs, "Converted", {
-            token: dai.address,
             amountIn: amount,
             amountOut: daiToMiner,
+            token: dai.address,
         });
     });
 
-    describe("calculating swaps", async() => {
-        let uniswapVRouter, path;
+    describe("calculating swaps", async () => {
+        let uniswapV2Router, path;
 
         beforeEach(async () => {
-            const provider = new Web3.providers.HttpProvider("http://localhost:8545");
+            const provider = new Web3.providers.HttpProvider(
+                "http://localhost:8545"
+            );
 
-            UniSwapV2Router = TruffleContract({ abi: UniSwapV2PairMetadata.abi });
+            const UniSwapV2Router = truffleContract({
+                abi: UniSwapV2RouterMetadata.abi,
+            });
             UniSwapV2Router.setProvider(provider);
             uniswapV2Router = await UniSwapV2Router.at(uniswapVRouterAddress);
 
@@ -98,8 +108,10 @@ contract("UniTokenSwap", (accounts) => {
             path[1] = await uniswapV2Router.WETH();
         });
 
-        it("should get the amount of token required to convert to eth", async() => {
-            const actual = await swap.getTokenToEth(dai.address, amount, { from: OWNER });
+        it("should get the amount of token required to convert to eth", async () => {
+            const actual = await swap.getTokenToEth(dai.address, amount, {
+                from: OWNER,
+            });
 
             const amounts = await uniswapV2Router.getAmountsOut(amount, path);
             const expected = amounts[path.length - 1];
@@ -107,54 +119,53 @@ contract("UniTokenSwap", (accounts) => {
             expect(actual).to.be.bignumber.equal(expected);
         });
 
-        it("should get the amount of token require to convert to miner", async() => {
-            const provider = new Web3.providers.HttpProvider("http://localhost:8545");
+        it("should get the amount of token require to convert to miner", async () => {
+            const provider = new Web3.providers.HttpProvider(
+                "http://localhost:8545"
+            );
 
-            const EthSwap = TruffleContract({ abi: IEthSwap.abi });
+            const EthSwap = truffleContract({ abi: IEthSwap.abi });
             EthSwap.setProvider(provider);
-            ethSwap = await EthSwap.at("0x35755705DeFD61dC1EE0E86b9602088c2b2049bc");
 
-            const actual = await swap.getTokenToMiner(dai.address, amount, { from: OWNER });
+            const ethSwap = await EthSwap.at(ethSwapAddress);
+
+            const actual = await swap.getTokenToMiner(dai.address, amount, {
+                from: OWNER,
+            });
 
             const amounts = await uniswapV2Router.getAmountsOut(amount, path);
 
             const ethToMinerUnitPrice = await ethSwap.getConversionRate();
             const decimals = new BN("10").pow(new BN("18"));
 
-            const expected = amounts[path.length - 1].mul(decimals).div(ethToMinerUnitPrice);
+            const expected = amounts[path.length - 1].
+                mul(decimals).
+                div(ethToMinerUnitPrice);
 
             expect(actual).to.be.bignumber.equal(expected);
         });
     });
 
-    it("should NOT swap when deadline expires", async() => {
+    it("should NOT swap when deadline expires", async () => {
         await dai.approve(swap.address, amount, { from: OWNER });
 
         time.increase(time.duration.minutes(20));
 
         await expectRevert(
-            swap.convert(
-                dai.address,
-                amount,
-                amount,
-                deadline,
-                { from: OWNER }
-            ),
+            swap.convert(dai.address, amount, amount, deadline, {
+                from: OWNER,
+            }),
             "UniswapV2Router: EXPIRED"
         );
     });
 
-    it("should NOT swap invalid token", async() => {
+    it("should NOT swap invalid token", async () => {
         await dai.approve(swap.address, amount, { from: OWNER });
 
         await expectRevert.unspecified(
-            swap.convert(
-                ZERO_ADDRESS,
-                amount,
-                amount,
-                deadline,
-                { from: OWNER }
-            )
+            swap.convert(ZERO_ADDRESS, amount, amount, deadline, {
+                from: OWNER,
+            })
         );
     });
 });
