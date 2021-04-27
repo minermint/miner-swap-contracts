@@ -3,9 +3,10 @@ const { expect } = require("chai");
 const { ZERO_ADDRESS, MAX_UINT256 } = constants;
 
 const TruffleContract = require("@truffle/contract");
+const IEthSwap = artifacts.require("IEthSwap");
 const UniTokenSwap = artifacts.require("UniTokenSwap");
 const ERC20Metadata = require("@uniswap/v2-core/build/ERC20.json");
-
+const UniSwapV2PairMetadata = require("@uniswap/v2-periphery/build/UniswapV2Router02.json");
 const Web3 = require("web3");
 
 contract("UniTokenSwap", (accounts) => {
@@ -22,10 +23,11 @@ contract("UniTokenSwap", (accounts) => {
     const uniswapFactoryAddress = process.env.UNISWAP_FACTORY;
     const minerAddress = process.env.MINER;
     const daiAddress = process.env.DAI;
+    const uniswapVRouterAddress = process.env.UNISWAP_ROUTER;
 
     const amount = new BN("10").mul(new BN("10").pow(new BN("18")));
 
-    let ERC20;
+    let ERC20, UniSwapV2Pair;
 
     let swap, dai;
 
@@ -81,28 +83,60 @@ contract("UniTokenSwap", (accounts) => {
         });
     });
 
-    it("should get the amount of token required to convert to eth", async() => {
-        const estimate = await swap.getTokenToEth(dai.address, new BN("10000000000000000000"), { from: OWNER });
+    describe("calculating swaps", async() => {
+        let uniswapVRouter, path;
 
-        console.log(estimate.toString());
-    });
+        beforeEach(async () => {
+            const provider = new Web3.providers.HttpProvider("http://localhost:8545");
 
-    it("should get the amount of token require to convert to miner", async() => {
-        const estimate = await swap.getTokenToMiner(dai.address, new BN("10000000000000000000"), { from: OWNER });
+            UniSwapV2Router = TruffleContract({ abi: UniSwapV2PairMetadata.abi });
+            UniSwapV2Router.setProvider(provider);
+            uniswapV2Router = await UniSwapV2Router.at(uniswapVRouterAddress);
 
-        console.log(estimate.toString());
+            path = [];
+            path[0] = dai.address;
+            path[1] = await uniswapV2Router.WETH();
+        });
+
+        it("should get the amount of token required to convert to eth", async() => {
+            const actual = await swap.getTokenToEth(dai.address, amount, { from: OWNER });
+
+            const amounts = await uniswapV2Router.getAmountsOut(amount, path);
+            const expected = amounts[path.length - 1];
+
+            expect(actual).to.be.bignumber.equal(expected);
+        });
+
+        it("should get the amount of token require to convert to miner", async() => {
+            const provider = new Web3.providers.HttpProvider("http://localhost:8545");
+
+            const EthSwap = TruffleContract({ abi: IEthSwap.abi });
+            EthSwap.setProvider(provider);
+            ethSwap = await EthSwap.at("0x35755705DeFD61dC1EE0E86b9602088c2b2049bc");
+
+            const actual = await swap.getTokenToMiner(dai.address, amount, { from: OWNER });
+
+            const amounts = await uniswapV2Router.getAmountsOut(amount, path);
+
+            const ethToMinerUnitPrice = await ethSwap.getConversionRate();
+            const decimals = new BN("10").pow(new BN("18"));
+
+            const expected = amounts[path.length - 1].mul(decimals).div(ethToMinerUnitPrice);
+
+            expect(actual).to.be.bignumber.equal(expected);
+        });
     });
 
     it("should NOT swap when deadline expires", async() => {
-        await dai.approve(swap.address, new BN("10000000000000000000"), { from: OWNER });
+        await dai.approve(swap.address, amount, { from: OWNER });
 
         time.increase(time.duration.minutes(20));
 
         await expectRevert(
             swap.convert(
                 dai.address,
-                new BN("10000000000000000000"),
-                new BN("10000000000000000000"),
+                amount,
+                amount,
                 deadline,
                 { from: OWNER }
             ),
@@ -111,13 +145,13 @@ contract("UniTokenSwap", (accounts) => {
     });
 
     it("should NOT swap invalid token", async() => {
-        await dai.approve(swap.address, new BN("10000000000000000000"), { from: OWNER });
+        await dai.approve(swap.address, amount, { from: OWNER });
 
         await expectRevert.unspecified(
             swap.convert(
                 ZERO_ADDRESS,
-                new BN("10000000000000000000"),
-                new BN("10000000000000000000"),
+                amount,
+                amount,
                 deadline,
                 { from: OWNER }
             )
