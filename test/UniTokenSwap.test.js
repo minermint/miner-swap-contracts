@@ -138,9 +138,9 @@ contract("UniTokenSwap", (accounts) => {
             const ethToMinerUnitPrice = await ethSwap.getConversionRate();
             const decimals = new BN("10").pow(new BN("18"));
 
-            const expected = amounts[path.length - 1].
-                mul(decimals).
-                div(ethToMinerUnitPrice);
+            const expected = amounts[path.length - 1]
+                .mul(decimals)
+                .div(ethToMinerUnitPrice);
 
             expect(actual).to.be.bignumber.equal(expected);
         });
