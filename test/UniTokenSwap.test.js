@@ -23,7 +23,7 @@ contract("UniTokenSwap", (accounts) => {
     const minerAddress = process.env.MINER;
     const daiAddress = process.env.DAI;
 
-    const amount = new BN("10000000000000000000");
+    const amount = new BN("10").mul(new BN("10").pow(new BN("18")));
 
     let ERC20;
 
