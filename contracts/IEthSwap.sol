@@ -9,4 +9,6 @@ interface IEthSwap {
         external
         view
         returns (uint256);
+
+    function payments(address dest) external view returns (uint256);
 }

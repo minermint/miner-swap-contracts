@@ -28,7 +28,7 @@ contract("UniTokenSwap", (accounts) => {
 
     let ERC20;
 
-    let swap, dai;
+    let swap, dai, ethSwap;
 
     let deadline, timestamp;
 
@@ -51,6 +51,11 @@ contract("UniTokenSwap", (accounts) => {
         timestamp = (await web3.eth.getBlock("latest")).timestamp;
         const twentyMinutes = 20 * 60;
         deadline = timestamp + twentyMinutes;
+
+        const EthSwap = truffleContract({ abi: IEthSwap.abi });
+        EthSwap.setProvider(provider);
+
+        ethSwap = await EthSwap.at(ethSwapAddress);
     });
 
     it("should convert a token for miner", async () => {
@@ -63,7 +68,7 @@ contract("UniTokenSwap", (accounts) => {
         await dai.approve(swap.address, amount, { from: OWNER });
 
         await swap.convert(dai.address, amount, amount, deadline, {
-            from: OWNER,
+            from: OWNER
         });
 
         expect(await miner.balanceOf(OWNER)).to.be.bignumber.equal(expected);
@@ -87,6 +92,25 @@ contract("UniTokenSwap", (accounts) => {
             amountOut: daiToMiner,
             token: dai.address,
         });
+    });
+
+    it("should have an Ether balance in EthSwap", async() => {
+        const expected = await swap.getTokenToEth(dai.address, amount);
+
+        const initialBalance = await ethSwap.payments(OWNER);
+
+        await dai.approve(swap.address, amount, { from: OWNER });
+
+        await swap.convert(dai.address, amount, amount, deadline, {
+            from: OWNER
+        });
+
+        await ethSwap.payments(OWNER);
+        let balance = await ethSwap.payments(OWNER);
+
+        balance = balance.sub(initialBalance);
+
+        expect(balance).to.be.bignumber.equal(expected);
     });
 
     describe("calculating swaps", async () => {
@@ -120,15 +144,6 @@ contract("UniTokenSwap", (accounts) => {
         });
 
         it("should get the amount of token require to convert to miner", async () => {
-            const provider = new Web3.providers.HttpProvider(
-                "http://localhost:8545"
-            );
-
-            const EthSwap = truffleContract({ abi: IEthSwap.abi });
-            EthSwap.setProvider(provider);
-
-            const ethSwap = await EthSwap.at(ethSwapAddress);
-
             const actual = await swap.getTokenToMiner(dai.address, amount, {
                 from: OWNER,
             });
@@ -167,5 +182,22 @@ contract("UniTokenSwap", (accounts) => {
                 from: OWNER,
             })
         );
+    });
+
+    it("should return tokens if deadline expires", async () => {
+        const expected = await dai.balanceOf(OWNER);
+
+        await dai.approve(swap.address, amount, { from: OWNER });
+
+        time.increase(time.duration.minutes(20));
+
+        await expectRevert(
+            swap.convert(dai.address, amount, amount, deadline, {
+                from: OWNER,
+            }),
+            "UniswapV2Router: EXPIRED"
+        );
+
+        expect(await dai.balanceOf(OWNER)).to.be.bignumber.equal(expected);
     });
 });

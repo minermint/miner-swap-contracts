@@ -2,10 +2,10 @@
 
 pragma solidity >=0.6.2 <0.8.0;
 
-import "@uniswap/v2-periphery/contracts/libraries/UniswapV2Library.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2ERC20.sol";
-import "@uniswap/v2-periphery/contracts/UniswapV2Router02.sol";
+import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "./IEthSwap.sol";
 
@@ -49,10 +49,10 @@ contract UniTokenSwap {
 
         require(
             ethSwap.getConversionAmount(etherMin) >= minerMin,
-            "UniTokenSwap/miner-min-not-met"
+            "UniTokenSwap/slippage"
         );
 
-        router.swapExactTokensForETH(
+        uint256[] memory amounts = router.swapExactTokensForETH(
             amount,
             etherMin,
             path,
@@ -60,7 +60,7 @@ contract UniTokenSwap {
             deadline
         );
 
-        ethSwap.convert{ value: address(this).balance }(minerMin);
+        ethSwap.convert{ value: amounts[amounts.length - 1] }(minerMin);
 
         IUniswapV2ERC20 miner = IUniswapV2ERC20(minerAddress);
 
@@ -68,7 +68,7 @@ contract UniTokenSwap {
 
         miner.transfer(msg.sender, minerSwapAmount);
 
-        emit Converted(token, amount, minerSwapAmount);
+        emit Converted(token, amount, amounts[amounts.length - 1], minerSwapAmount);
     }
 
     receive() external payable {}
@@ -132,5 +132,5 @@ contract UniTokenSwap {
         return getTokenToMiner(token, amount);
     }
 
-    event Converted(address indexed token, uint256 amountIn, uint256 amountOut);
+    event Converted(address indexed token, uint256 amountIn, uint256 ethAmount, uint256 amountOut);
 }
